@@ -796,9 +796,11 @@ async def avatar(ctx, member: discord.Member = None):
 # ==========================================
 @bot.event
 async def on_ready():
-    print(f'✅ Bot connecté: {bot.user}')
-    print(f'📊 {len(bot.guilds)} serveurs')
-    await bot.change_presence(activity=discord.CustomActivity(name="owner = 2030.m"))
+    # Changement pour éviter les doublons
+    await bot.change_presence(activity=discord.CustomActivity(name="VERSION RENDER - 2030.m"))
+    
+    print(f'✅ [VERSION RENDER] Bot connecté: {bot.user}')
+    print(f'📊 [VERSION RENDER] {len(bot.guilds)} serveurs')
 
     # RECREER LES VUES DES TICKETS
     try:
