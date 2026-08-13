@@ -27,7 +27,6 @@ try:
     def run_web():
         app.run(host='0.0.0.0', port=10000)
 
-    # Démarrer le serveur web dans un thread séparé
     threading.Thread(target=run_web, daemon=True).start()
     print("🌐 Serveur web démarré sur le port 10000")
 except ImportError:
@@ -58,16 +57,29 @@ def save_json(f, data):
     with open(f, 'w') as file:
         json.dump(data, file, indent=4)
 
+# ==========================================
+# SYSTEME D'ADMINS (après les fonctions)
+# ==========================================
+ADMIN_IDS = load_json("admins.json").get("admins", [])
+
+def is_admin(ctx):
+    """Vérifie si l'utilisateur est admin ou owner"""
+    return ctx.author.id in OWNER_IDS or ctx.author.id in ADMIN_IDS
+
+def save_admins():
+    """Sauvegarde la liste des admins"""
+    save_json("admins.json", {"admins": ADMIN_IDS})
+
+# ==========================================
+# STOCK
+# ==========================================
 def load_stock():
     stock = load_json("stock.json")
     if not stock:
         stock = {
-            # === Steal à Brainrot ===
             "garama_regu": 26,
             "garama_gold": 5,
             "garama_diamant": 6,
-
-            # === Monde 1 ===
             "star_fruit_seed": 48,
             "mega_seed": 47,
             "hypno_bloom_seed": 11,
@@ -78,8 +90,6 @@ def load_stock():
             "raccoon": 1,
             "super_watering_can": 100,
             "super_sprinkler_can": 84,
-
-            # === Monde 2 ===
             "mega squirrel": 1,
             "mega hedgehog": 1,
             "mega turkey ": 2,
@@ -96,12 +106,9 @@ def load_stock():
 
 def get_emoji(item):
     emojis = {
-        # === Steal à Brainrot ===
         "garama_regu": "⭐",
         "garama_gold": "✨",
         "garama_diamant": "💎",
-
-        # === Monde 1 ===
         "star_fruit_seed": "🌟",
         "mega_seed": "🌰",
         "hypno_bloom_seed": "🌙",
@@ -112,8 +119,6 @@ def get_emoji(item):
         "raccoon": "🦝",
         "super_watering_can": "💧",
         "super_sprinkler_can": "🌧️",
-
-        # === Monde 2 ===
         "atlantic giant pumkin seed": "🎃",
         "super_syrup_sprinkler": "🧪",
         "super_syrup_can": "🥫",
@@ -121,17 +126,13 @@ def get_emoji(item):
         "mushroom_seed": "🍄",
         "fox": "🦊",
         "wolf": "🐺"
-
     }
     return emojis.get(item, "📦")
 
 PRICES = {
-    # === Steal à Brainrot ===
     "garama_regu": {"price": 1.00, "info": "", "category": "steal"},
     "garama_gold": {"price": 1.20, "info": "", "category": "steal"},
     "garama_diamant": {"price": 1.40, "info": "", "category": "steal"},
-
-    # === Monde 1 ===
     "star_fruit_seed": {"price": 0.10, "info": "", "category": "monde1"},
     "mega_seed": {"price": 0.01, "info": "", "category": "monde1"},
     "hypno_bloom_seed": {"price": 0.01, "info": "", "category": "monde1"},
@@ -142,8 +143,6 @@ PRICES = {
     "raccoon": {"price": 0.45, "info": "", "category": "monde1"},
     "super_watering_can": {"price": 0.01, "info": "", "category": "monde1"},
     "super_sprinkler_can": {"price": 0.01, "info": "", "category": "monde1"},
-
-    # === Monde 2 ===
     "atlantic giant pumkin seed": {"price": 0.04, "info": "","category":"monde2"},     
     "super_syrup_sprinkler": {"price": 0.01, "info": "", "category": "monde2"},
     "super_syrup_can": {"price": 0.01, "info": "", "category": "monde2"},
@@ -154,7 +153,7 @@ PRICES = {
 }
 
 # ==========================================
-# TICKETS
+# TICKETS (classes)
 # ==========================================
 class TicketView(discord.ui.View):
     def __init__(self):
@@ -254,9 +253,6 @@ class TicketCloseView(discord.ui.View):
         await asyncio.sleep(5)
         await interaction.channel.delete()
 
-# ==========================================
-# MIDDLEMAN TICKETS
-# ==========================================
 class MiddlemanTicketView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -359,7 +355,6 @@ class MiddlemanTicketCloseView(discord.ui.View):
 # ==========================================
 # STOCK AVEC PAGINATION
 # ==========================================
-
 class StockView(discord.ui.View):
     def __init__(self, ctx, pages, current_page=0):
         super().__init__(timeout=60)
@@ -372,10 +367,8 @@ class StockView(discord.ui.View):
     async def update_message(self, interaction):
         embed = self.pages[self.current_page]
         embed.set_footer(text=f"Page {self.current_page + 1}/{self.total_pages}")
-
         self.children[0].disabled = self.current_page == 0
         self.children[1].disabled = self.current_page == self.total_pages - 1
-
         await interaction.response.edit_message(embed=embed, view=self)
 
     @discord.ui.button(label="◀", style=ButtonStyle.secondary)
@@ -391,30 +384,22 @@ class StockView(discord.ui.View):
             await self.update_message(interaction)
 
 def create_stock_pages(ctx, stock):
-    """Crée les pages du stock dans l'ordre : Monde 2, Monde 1, Steal"""
     pages = []
-
     categories = {
         "monde2": {"name": "🌿 Monde 2", "emoji": "🌿"},
         "monde1": {"name": "🌱 Monde 1", "emoji": "🌱"},
         "steal": {"name": "🎯 Steal à Brainrot", "emoji": "🎯"}
     }
-
     items_by_category = {"steal": [], "monde1": [], "monde2": []}
-
     for item, quantity in stock.items():
         data = PRICES.get(item, {"price": 0, "info": "", "category": "monde2"})
         category = data.get("category", "monde2")
         items_by_category[category].append((item, quantity, data))
-
-    # Ordre des catégories : Monde 2, Monde 1, Steal
     category_order = ["monde2", "monde1", "steal"]
-
     for category in category_order:
         items = items_by_category.get(category, [])
         if items:
             cat_name = categories.get(category, {}).get("name", category)
-
             embed = discord.Embed(
                 title=f"📦 **STOCK COMPLET**",
                 description=f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -423,10 +408,8 @@ def create_stock_pages(ctx, stock):
                 color=0x5865F2,
                 timestamp=datetime.now()
             )
-
             if ctx.guild.icon:
                 embed.set_thumbnail(url=ctx.guild.icon.url)
-
             for item, quantity, data in items:
                 emoji = get_emoji(item)
                 name = item.replace('_', ' ').title()
@@ -435,9 +418,7 @@ def create_stock_pages(ctx, stock):
                     value=f"Quantité: **{quantity}**",
                     inline=True
                 )
-
             pages.append(embed)
-
     return pages
 
 # ==========================================
@@ -450,6 +431,7 @@ async def help_cmd(ctx):
     embed.add_field(name="🛒 BOUTIQUE", value="`monde1shop`, `monde2shop`, `stealshop`, `stock`", inline=False)
     embed.add_field(name="🎫 TICKETS", value="`ticketpanel`, `middleman`", inline=False)
     embed.add_field(name="🎁 GIVEAWAYS", value="`giveaway`, `reroll`", inline=False)
+    embed.add_field(name="👑 ADMIN", value="`admin`, `admin list`, `add admin @membre`, `remove admin @membre`", inline=False)
     embed.add_field(name="👑 OWNER", value="`ownerhelp`, `botstatus`, `guilds`, `broadcast`", inline=False)
     embed.add_field(name="🔧 UTILITAIRES", value="`ping`, `userinfo`, `serverinfo`, `avatar`", inline=False)
     embed.add_field(name="👋 BIENVENUE", value="`setupmembre`", inline=False)
@@ -460,54 +442,42 @@ async def ping(ctx):
     await ctx.send(f"🏓 {round(bot.latency * 1000)}ms")
 
 # ==========================================
-# NOUVELLE BOUTIQUE (3 COMMANDES SANS BOUTONS)
+# BOUTIQUE
 # ==========================================
-
 async def send_category_shop(ctx, category_key, category_name, category_emoji):
-    """Fonction utilitaire pour afficher le shop d'une catégorie spécifique"""
     stock = load_stock()
-
     embed = discord.Embed(
         title=f"🛒 **BOUTIQUE - {category_name}**",
         description=f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         color=0xFEE75C,
         timestamp=datetime.now()
     )
-
     if ctx.guild.icon:
         embed.set_thumbnail(url=ctx.guild.icon.url)
-
     items_found = False
-
     for item, quantity in stock.items():
         if quantity > 0:
             data = PRICES.get(item, {"price": 0, "info": "", "category": "monde2"})
-
             if data.get("category") == category_key:
                 items_found = True
                 price = data["price"]
-
                 if price >= 1:
                     price_str = f"{price:.2f}€"
                 else:
                     price_str = f"{int(price * 100)} centime(s)"
                 if data.get("info"):
                     price_str += f" {data['info']}"
-
                 emoji = get_emoji(item)
                 name = item.replace('_', ' ').title()
-
                 embed.add_field(
                     name=f"{emoji} {name}",
                     value=f"📦 Stock: `{quantity}`\n💰 Prix: {price_str}",
                     inline=True
                 )
-
     if not items_found:
         embed.description += f"\n\n❌ Aucun objet disponible dans cette catégorie pour le moment."
     else:
         embed.description += f"\n\n*Utilisez `!buy [nom]` pour acheter (si vous avez cette commande)*"
-
     await ctx.send(embed=embed)
 
 @bot.command(name='monde1shop')
@@ -523,40 +493,37 @@ async def steal_shop(ctx):
     await send_category_shop(ctx, "steal", "🎯 Steal à Brainrot", "🎯")
 
 # ==========================================
-# STOCK AVEC PAGINATION
+# STOCK (admin uniquement)
 # ==========================================
 @bot.command(name='stock')
-@commands.has_permissions(administrator=True)
+@commands.check(is_admin)
 async def show_stock(ctx):
     stock = load_stock()
     pages = create_stock_pages(ctx, stock)
-
     if not pages:
         return await ctx.send("❌ **Aucun article en stock.**")
-
     view = StockView(ctx, pages)
     embed = pages[0]
     embed.set_footer(text=f"Page 1/{len(pages)}")
-
     await ctx.send(embed=embed, view=view)
 
 # ==========================================
-# MODÉRATION
+# MODÉRATION (admin uniquement)
 # ==========================================
 @bot.command(name='ban')
-@commands.has_permissions(ban_members=True)
+@commands.check(is_admin)
 async def ban(ctx, member: discord.Member, *, reason="Aucune"):
     await member.ban(reason=reason)
     await ctx.send(f"🔨 {member.mention} banni")
 
 @bot.command(name='kick')
-@commands.has_permissions(kick_members=True)
+@commands.check(is_admin)
 async def kick(ctx, member: discord.Member, *, reason="Aucune"):
     await member.kick(reason=reason)
     await ctx.send(f"👢 {member.mention} expulsé")
 
 @bot.command(name='mute')
-@commands.has_permissions(manage_messages=True)
+@commands.check(is_admin)
 async def mute(ctx, member: discord.Member, duration: str = None, *, reason="Aucune"):
     muted = discord.utils.get(ctx.guild.roles, name="Muted")
     if not muted:
@@ -570,7 +537,7 @@ async def mute(ctx, member: discord.Member, duration: str = None, *, reason="Auc
     await ctx.send(f"🔇 {member.mention} mute")
 
 @bot.command(name='unmute')
-@commands.has_permissions(manage_messages=True)
+@commands.check(is_admin)
 async def unmute(ctx, member: discord.Member):
     muted = discord.utils.get(ctx.guild.roles, name="Muted")
     if muted and muted in member.roles:
@@ -578,7 +545,7 @@ async def unmute(ctx, member: discord.Member):
         await ctx.send(f"🔊 {member.mention} unmute")
 
 @bot.command(name='clear')
-@commands.has_permissions(manage_messages=True)
+@commands.check(is_admin)
 async def clear(ctx, amount: int = 10):
     if amount > 100:
         return await ctx.send("❌ Max 100")
@@ -586,7 +553,7 @@ async def clear(ctx, amount: int = 10):
     await ctx.send(f"🗑️ {len(deleted)-1} supprimés", delete_after=3)
 
 @bot.command(name='lock')
-@commands.has_permissions(administrator=True)
+@commands.check(is_admin)
 async def lock(ctx, channel: discord.TextChannel = None):
     if not channel:
         channel = ctx.channel
@@ -594,7 +561,7 @@ async def lock(ctx, channel: discord.TextChannel = None):
     await ctx.send(f"🔒 {channel.mention} verrouillé")
 
 @bot.command(name='unlock')
-@commands.has_permissions(administrator=True)
+@commands.check(is_admin)
 async def unlock(ctx, channel: discord.TextChannel = None):
     if not channel:
         channel = ctx.channel
@@ -602,10 +569,10 @@ async def unlock(ctx, channel: discord.TextChannel = None):
     await ctx.send(f"🔓 {channel.mention} déverrouillé")
 
 # ==========================================
-# TICKETS
+# TICKETS (admin uniquement)
 # ==========================================
 @bot.command(name='ticketpanel')
-@commands.has_permissions(administrator=True)
+@commands.check(is_admin)
 async def ticketpanel(ctx):
     embed = discord.Embed(
         title="🎫 **Système de Tickets**",
@@ -626,7 +593,7 @@ async def ticketpanel(ctx):
     await ctx.send("✅ Panel de tickets créé avec succès !")
 
 @bot.command(name='middleman')
-@commands.has_permissions(administrator=True)
+@commands.check(is_admin)
 async def middleman_panel(ctx):
     middleman_role = discord.utils.get(ctx.guild.roles, name="Gérant middleman")
     if not middleman_role:
@@ -655,10 +622,10 @@ async def middleman_panel(ctx):
     await ctx.send(f"✅ Panel Middleman créé avec succès !\n📌 Rôle notifié : {middleman_role.mention}")
 
 # ==========================================
-# GIVEAWAYS
+# GIVEAWAYS (admin uniquement)
 # ==========================================
 @bot.command(name='giveaway')
-@commands.has_permissions(manage_messages=True)
+@commands.check(is_admin)
 async def giveaway(ctx, duration: str, *, prize: str):
     embed = discord.Embed(title="🎉 GIVEAWAY", description=f"**Prix:** {prize}\n**Durée:** {duration}", color=0xFEE75C)
     msg = await ctx.send(embed=embed)
@@ -666,7 +633,7 @@ async def giveaway(ctx, duration: str, *, prize: str):
     await ctx.send("✅ Giveaway lancé !")
 
 @bot.command(name='reroll')
-@commands.has_permissions(manage_messages=True)
+@commands.check(is_admin)
 async def reroll(ctx, msg_id: int):
     msg = await ctx.channel.fetch_message(msg_id)
     users = []
@@ -680,10 +647,10 @@ async def reroll(ctx, msg_id: int):
         await ctx.send(f"🎉 Gagnant: {winner.mention}")
 
 # ==========================================
-# BIENVENUE
+# BIENVENUE (admin uniquement)
 # ==========================================
 @bot.command(name='setupmembre')
-@commands.has_permissions(administrator=True)
+@commands.check(is_admin)
 async def setup_membre(ctx, role: discord.Role = None):
     if not ctx.guild.me.guild_permissions.manage_roles:
         return await ctx.send("❌ Je n'ai pas la permission `Gérer les rôles` !")
@@ -757,7 +724,7 @@ async def broadcast(ctx, *, msg: str):
     await ctx.send(f"✅ Message envoyé à {count} serveurs")
 
 # ==========================================
-# UTILITAIRES
+# UTILITAIRES (accessibles à tous)
 # ==========================================
 @bot.command(name='userinfo')
 async def userinfo(ctx, member: discord.Member = None):
@@ -792,11 +759,118 @@ async def avatar(ctx, member: discord.Member = None):
     await ctx.send(embed=embed)
 
 # ==========================================
+# COMMANDES ADMIN (système de gestion)
+# ==========================================
+@bot.command(name='admin')
+@commands.check(is_owner)
+async def admin_help(ctx):
+    """Affiche les commandes admin"""
+    embed = discord.Embed(
+        title="👑 **COMMANDES ADMIN**",
+        description="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        color=0xFEE75C
+    )
+    embed.add_field(
+        name="📋 Gestion des admins",
+        value="`!admin list` - Liste des admins\n"
+              "`!add admin @membre` - Ajouter un admin\n"
+              "`!remove admin @membre` - Retirer un admin",
+        inline=False
+    )
+    embed.add_field(
+        name="🛡️ Commandes avec permissions admin",
+        value="`!ban`, `!kick`, `!mute`, `!unmute`\n"
+              "`!clear`, `!lock`, `!unlock`\n"
+              "`!ticketpanel`, `!middleman`\n"
+              "`!stock`, `!setupmembre`",
+        inline=False
+    )
+    await ctx.send(embed=embed)
+
+@bot.command(name='add')
+@commands.check(is_owner)
+async def add_admin(ctx, member: discord.Member = None):
+    """Ajoute un admin (owner uniquement)"""
+    if not member:
+        return await ctx.send("❌ Mentionne un membre : `!add admin @membre`")
+    
+    if member.id in OWNER_IDS:
+        return await ctx.send("❌ Ce membre est déjà owner !")
+    
+    if member.id in ADMIN_IDS:
+        return await ctx.send(f"❌ {member.mention} est déjà admin !")
+    
+    ADMIN_IDS.append(member.id)
+    save_admins()
+    
+    embed = discord.Embed(
+        title="✅ **Admin ajouté**",
+        description=f"{member.mention} est maintenant administrateur du bot !",
+        color=0x57F287
+    )
+    embed.set_thumbnail(url=member.display_avatar.url)
+    await ctx.send(embed=embed)
+
+@bot.command(name='remove')
+@commands.check(is_owner)
+async def remove_admin(ctx, member: discord.Member = None):
+    """Retire un admin (owner uniquement)"""
+    if not member:
+        return await ctx.send("❌ Mentionne un membre : `!remove admin @membre`")
+    
+    if member.id in OWNER_IDS:
+        return await ctx.send("❌ Impossible de retirer un owner !")
+    
+    if member.id not in ADMIN_IDS:
+        return await ctx.send(f"❌ {member.mention} n'est pas admin !")
+    
+    ADMIN_IDS.remove(member.id)
+    save_admins()
+    
+    embed = discord.Embed(
+        title="❌ **Admin retiré**",
+        description=f"{member.mention} n'est plus administrateur du bot.",
+        color=0xED4245
+    )
+    embed.set_thumbnail(url=member.display_avatar.url)
+    await ctx.send(embed=embed)
+
+@bot.command(name='list')
+async def list_admins(ctx):
+    """Affiche la liste des admins (accessible à tous)"""
+    embed = discord.Embed(
+        title="👑 **Liste des administrateurs**",
+        description="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        color=0x5865F2
+    )
+    
+    # Owners
+    owners = []
+    for owner_id in OWNER_IDS:
+        try:
+            user = await bot.fetch_user(owner_id)
+            owners.append(f"👑 {user.name}")
+        except:
+            owners.append(f"👑 Owner ID: {owner_id}")
+    embed.add_field(name="**Owners**", value="\n".join(owners) if owners else "Aucun", inline=False)
+    
+    # Admins
+    admins = []
+    for admin_id in ADMIN_IDS:
+        try:
+            user = await bot.fetch_user(admin_id)
+            admins.append(f"🛡️ {user.name}")
+        except:
+            admins.append(f"🛡️ Admin ID: {admin_id}")
+    embed.add_field(name="**Admins**", value="\n".join(admins) if admins else "Aucun", inline=False)
+    
+    await ctx.send(embed=embed)
+
+# ==========================================
 # EVENTS
 # ==========================================
 @bot.event
 async def on_ready():
-    # Changement pour éviter les doublons
     await bot.change_presence(activity=discord.CustomActivity(name="VERSION RENDER - 2030.m"))
     
     print(f'✅ [VERSION RENDER] Bot connecté: {bot.user}')
@@ -856,7 +930,7 @@ if __name__ == "__main__":
         print("❌ Token manquant !")
         sys.exit(1)
 
-    for f in ["config.json", "stock.json", "tickets.json", "giveaways.json", "mutes.json"]:
+    for f in ["config.json", "stock.json", "tickets.json", "giveaways.json", "mutes.json", "admins.json"]:
         if not os.path.exists(f):
             save_json(f, {})
 
