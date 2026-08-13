@@ -705,7 +705,7 @@ async def ownerhelp(ctx):
 @bot.command(name='botstatus')
 @commands.check(is_owner)
 async def botstatus(ctx, *, status: str):
-    await bot.change_presence(activity=discord.Streaming(name=f"🔴 {status}", url="https://twitch.tv/votre_stream"))
+    await bot.change_presence(activity=discord.Streaming(name="owner = 2030.m", url="https://twitch.tv/votre_stream"))
     await ctx.send(f"✅ Statut: {status}")
 
 @bot.command(name='guilds')
