@@ -428,10 +428,10 @@ def create_stock_pages(ctx, stock):
 async def help_cmd(ctx):
     embed = discord.Embed(title="🌟 MENU D'AIDE", color=0x5865F2)
     embed.add_field(name="🛡️ MODÉRATION", value="`ban`, `kick`, `mute`, `unmute`, `clear`, `lock`, `unlock`", inline=False)
-    embed.add_field(name="🛒 BOUTIQUE", value="`monde1shop`, `monde2shop`, `stealshop`, `stock`", inline=False)
+    embed.add_field(name="🛒 BOUTIQUE", value="`!shop` - Voir la boutique complète\n`!stock` - Voir le stock (admin)", inline=False)
     embed.add_field(name="🎫 TICKETS", value="`ticketpanel`, `middleman`", inline=False)
     embed.add_field(name="🎁 GIVEAWAYS", value="`giveaway`, `reroll`", inline=False)
-    embed.add_field(name="👑 ADMIN", value="`admin`, `admin list`, `add admin @membre`, `remove admin @membre`", inline=False)
+    embed.add_field(name="👑 ADMIN", value="`!admin` - Commandes admin\n`!list` - Liste des admins\n`!add @membre` - Ajouter un admin\n`!remove @membre` - Retirer un admin", inline=False)
     embed.add_field(name="👑 OWNER", value="`ownerhelp`, `botstatus`, `guilds`, `broadcast`", inline=False)
     embed.add_field(name="🔧 UTILITAIRES", value="`ping`, `userinfo`, `serverinfo`, `avatar`", inline=False)
     embed.add_field(name="👋 BIENVENUE", value="`setupmembre`", inline=False)
@@ -442,55 +442,62 @@ async def ping(ctx):
     await ctx.send(f"🏓 {round(bot.latency * 1000)}ms")
 
 # ==========================================
-# BOUTIQUE
+# SHOP UNIQUE (toutes les catégories)
 # ==========================================
-async def send_category_shop(ctx, category_key, category_name, category_emoji):
+@bot.command(name='shop')
+async def shop_all(ctx):
+    """Affiche toutes les boutiques en un seul message"""
     stock = load_stock()
+    
     embed = discord.Embed(
-        title=f"🛒 **BOUTIQUE - {category_name}**",
-        description=f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        title="🛒 **BOUTIQUE COMPLÈTE**",
+        description="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
         color=0xFEE75C,
         timestamp=datetime.now()
     )
+    
     if ctx.guild.icon:
         embed.set_thumbnail(url=ctx.guild.icon.url)
-    items_found = False
-    for item, quantity in stock.items():
-        if quantity > 0:
-            data = PRICES.get(item, {"price": 0, "info": "", "category": "monde2"})
-            if data.get("category") == category_key:
-                items_found = True
-                price = data["price"]
-                if price >= 1:
-                    price_str = f"{price:.2f}€"
-                else:
-                    price_str = f"{int(price * 100)} centime(s)"
-                if data.get("info"):
-                    price_str += f" {data['info']}"
-                emoji = get_emoji(item)
-                name = item.replace('_', ' ').title()
-                embed.add_field(
-                    name=f"{emoji} {name}",
-                    value=f"📦 Stock: `{quantity}`\n💰 Prix: {price_str}",
-                    inline=True
-                )
-    if not items_found:
-        embed.description += f"\n\n❌ Aucun objet disponible dans cette catégorie pour le moment."
-    else:
-        embed.description += f"\n\n*Utilisez `!buy [nom]` pour acheter (si vous avez cette commande)*"
+    
+    # Catégories dans l'ordre : Steal, Monde 1, Monde 2
+    categories = [
+        ("steal", "🎯 Steal à Brainrot"),
+        ("monde1", "🌱 Monde 1"),
+        ("monde2", "🌿 Monde 2")
+    ]
+    
+    for category_key, category_name in categories:
+        items_list = []
+        for item, quantity in stock.items():
+            if quantity > 0:
+                data = PRICES.get(item, {"price": 0, "info": "", "category": "monde2"})
+                if data.get("category") == category_key:
+                    price = data["price"]
+                    if price >= 1:
+                        price_str = f"{price:.2f}€"
+                    else:
+                        price_str = f"{int(price * 100)} centime(s)"
+                    if data.get("info"):
+                        price_str += f" {data['info']}"
+                    emoji = get_emoji(item)
+                    name = item.replace('_', ' ').title()
+                    items_list.append(f"{emoji} **{name}**\n💰 {price_str} (Stock: {quantity})")
+        
+        if items_list:
+            embed.add_field(
+                name=f"**{category_name}**",
+                value="\n".join(items_list),
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name=f"**{category_name}**",
+                value="❌ Aucun article disponible",
+                inline=False
+            )
+    
+    embed.set_footer(text=f"Demandé par {ctx.author.name}", icon_url=ctx.author.display_avatar.url)
     await ctx.send(embed=embed)
-
-@bot.command(name='monde1shop')
-async def monde1_shop(ctx):
-    await send_category_shop(ctx, "monde1", "🌱 Monde 1", "🌱")
-
-@bot.command(name='monde2shop')
-async def monde2_shop(ctx):
-    await send_category_shop(ctx, "monde2", "🌿 Monde 2", "🌿")
-
-@bot.command(name='stealshop')
-async def steal_shop(ctx):
-    await send_category_shop(ctx, "steal", "🎯 Steal à Brainrot", "🎯")
 
 # ==========================================
 # STOCK (admin uniquement)
@@ -721,7 +728,7 @@ async def broadcast(ctx, *, msg: str):
             await asyncio.sleep(0.5)
         except:
             pass
-    await ctx.send(f"✅ Message envoyé à {count} serveurs")
+        await ctx.send(f"✅ Message envoyé à {count} serveurs")
 
 # ==========================================
 # UTILITAIRES (accessibles à tous)
@@ -761,79 +768,6 @@ async def avatar(ctx, member: discord.Member = None):
 # ==========================================
 # COMMANDES ADMIN (système de gestion)
 # ==========================================
-@bot.command(name='admin')
-@commands.check(is_owner)
-async def admin_help(ctx):
-    """Affiche les commandes admin"""
-    embed = discord.Embed(
-        title="👑 **COMMANDES ADMIN**",
-        description="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
-        color=0xFEE75C
-    )
-    embed.add_field(
-        name="📋 Gestion des admins",
-        value="`!admin list` - Liste des admins\n"
-              "`!add admin @membre` - Ajouter un admin\n"
-              "`!remove admin @membre` - Retirer un admin",
-        inline=False
-    )
-    embed.add_field(
-        name="🛡️ Commandes avec permissions admin",
-        value="`!ban`, `!kick`, `!mute`, `!unmute`\n"
-              "`!clear`, `!lock`, `!unlock`\n"
-              "`!ticketpanel`, `!middleman`\n"
-              "`!stock`, `!setupmembre`",
-        inline=False
-    )
-    await ctx.send(embed=embed)
-
-@bot.command(name='add')
-@commands.check(is_owner)
-async def add_admin(ctx, member: discord.Member = None):
-    """Ajoute un admin (owner uniquement)"""
-    if not member:
-        return await ctx.send("❌ Mentionne un membre : `!add admin @membre`")
-    
-    if member.id in OWNER_IDS:
-        return await ctx.send("❌ Ce membre est déjà owner !")
-    
-    if member.id in ADMIN_IDS:
-        return await ctx.send(f"❌ {member.mention} est déjà admin !")
-    
-    ADMIN_IDS.append(member.id)
-    save_admins()
-    
-    embed = discord.Embed(
-        title="✅ **Admin ajouté**",
-        description=f"{member.mention} est maintenant administrateur du bot !",
-        color=0x57F287
-    )
-    embed.set_thumbnail(url=member.display_avatar.url)
-    await ctx.send(embed=embed)
-
-@bot.command(name='remove')
-@commands.check(is_owner)
-async def remove_admin(ctx, member: discord.Member = None):
-    """Retire un admin (owner uniquement)"""
-    if not member:
-        return await ctx.send("❌ Mentionne un membre : `!remove admin @membre`")
-    
-    if member.id in OWNER_IDS:
-        return await ctx.send("❌ Impossible de retirer un owner !")
-    
-    if member.id not in ADMIN_IDS:
-        return await ctx.send(f"❌ {member.mention} n'est pas admin !")
-    
-    ADMIN_IDS.remove(member.id)
-    save_admins()
-    
-    embed = discord.Embed(
-        title="❌ **Admin retiré**",
-        description=f"{member.mention} n'est plus administrateur du bot.",
-        color=0xED4245
-    )
-    embed.set_thumbnail(url=member.display_avatar.url)
-    await ctx.send(embed=embed)
 
 @bot.command(name='list')
 async def list_admins(ctx):
@@ -865,6 +799,82 @@ async def list_admins(ctx):
     embed.add_field(name="**Admins**", value="\n".join(admins) if admins else "Aucun", inline=False)
     
     await ctx.send(embed=embed)
+
+@bot.command(name='admin')
+@commands.check(is_owner)
+async def admin_help(ctx):
+    """Affiche les commandes admin"""
+    embed = discord.Embed(
+        title="👑 **COMMANDES ADMIN**",
+        description="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+        color=0xFEE75C
+    )
+    embed.add_field(
+        name="📋 Gestion des admins",
+        value="`!list` - Liste des admins\n"
+              "`!add @membre` - Ajouter un admin\n"
+              "`!remove @membre` - Retirer un admin",
+        inline=False
+    )
+    embed.add_field(
+        name="🛡️ Commandes avec permissions admin",
+        value="`!ban`, `!kick`, `!mute`, `!unmute`\n"
+              "`!clear`, `!lock`, `!unlock`\n"
+              "`!ticketpanel`, `!middleman`\n"
+              "`!stock`, `!setupmembre`",
+        inline=False
+    )
+    await ctx.send(embed=embed)
+
+@bot.command(name='add')
+@commands.check(is_owner)
+async def add_admin(ctx, member: discord.Member = None):
+    """Ajoute un admin (owner uniquement)"""
+    if not member:
+        return await ctx.send("❌ Mentionne un membre : `!add @membre`")
+    
+    if member.id in OWNER_IDS:
+        return await ctx.send("❌ Ce membre est déjà owner !")
+    
+    if member.id in ADMIN_IDS:
+        return await ctx.send(f"❌ {member.mention} est déjà admin !")
+    
+    ADMIN_IDS.append(member.id)
+    save_admins()
+    
+    embed = discord.Embed(
+        title="✅ **Admin ajouté**",
+        description=f"{member.mention} est maintenant administrateur du bot !",
+        color=0x57F287
+    )
+    embed.set_thumbnail(url=member.display_avatar.url)
+    await ctx.send(embed=embed)
+    print(f"✅ Admin ajouté : {member.name} ({member.id})")
+
+@bot.command(name='remove')
+@commands.check(is_owner)
+async def remove_admin(ctx, member: discord.Member = None):
+    """Retire un admin (owner uniquement)"""
+    if not member:
+        return await ctx.send("❌ Mentionne un membre : `!remove @membre`")
+    
+    if member.id in OWNER_IDS:
+        return await ctx.send("❌ Impossible de retirer un owner !")
+    
+    if member.id not in ADMIN_IDS:
+        return await ctx.send(f"❌ {member.mention} n'est pas admin !")
+    
+    ADMIN_IDS.remove(member.id)
+    save_admins()
+    
+    embed = discord.Embed(
+        title="❌ **Admin retiré**",
+        description=f"{member.mention} n'est plus administrateur du bot.",
+        color=0xED4245
+    )
+    embed.set_thumbnail(url=member.display_avatar.url)
+    await ctx.send(embed=embed)
+    print(f"❌ Admin retiré : {member.name} ({member.id})")
 
 # ==========================================
 # EVENTS
