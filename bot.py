@@ -7,6 +7,31 @@ import json
 import asyncio
 from datetime import datetime, timedelta
 import random
+import threading
+
+# ==========================================
+# SERVEUR WEB POUR RENDER (GRATUIT)
+# ==========================================
+try:
+    from flask import Flask
+    app = Flask(__name__)
+
+    @app.route('/')
+    def home():
+        return "🤖 Bot Discord en ligne ! | owner = 2030.m"
+
+    @app.route('/health')
+    def health():
+        return "OK", 200
+
+    def run_web():
+        app.run(host='0.0.0.0', port=10000)
+
+    # Démarrer le serveur web dans un thread séparé
+    threading.Thread(target=run_web, daemon=True).start()
+    print("🌐 Serveur web démarré sur le port 10000")
+except ImportError:
+    print("⚠️ Flask non installé, le serveur web ne sera pas démarré")
 
 # ==========================================
 # BOT
@@ -705,7 +730,7 @@ async def ownerhelp(ctx):
 @bot.command(name='botstatus')
 @commands.check(is_owner)
 async def botstatus(ctx, *, status: str):
-    await bot.change_presence(activity=discord.Streaming(name="owner = 2030.m", url="https://twitch.tv/votre_stream"))
+    await bot.change_presence(activity=discord.Streaming(name=f"owner = 2030.m", url="https://twitch.tv/votre_stream"))
     await ctx.send(f"✅ Statut: {status}")
 
 @bot.command(name='guilds')
@@ -719,119 +744,4 @@ async def guilds(ctx):
 @bot.command(name='broadcast')
 @commands.check(is_owner)
 async def broadcast(ctx, *, msg: str):
-    embed = discord.Embed(title="📢 Message du propriétaire", description=msg, color=0xFEE75C)
-    count = 0
-    for g in bot.guilds:
-        try:
-            channel = g.system_channel or g.text_channels[0]
-            await channel.send(embed=embed)
-            count += 1
-            await asyncio.sleep(0.5)
-        except:
-            pass
-    await ctx.send(f"✅ Message envoyé à {count} serveurs")
-
-# ==========================================
-# UTILITAIRES
-# ==========================================
-@bot.command(name='userinfo')
-async def userinfo(ctx, member: discord.Member = None):
-    if not member:
-        member = ctx.author
-    embed = discord.Embed(title=f"ℹ️ {member.name}", color=member.color)
-    embed.set_thumbnail(url=member.display_avatar.url)
-    embed.add_field(name="ID", value=member.id)
-    embed.add_field(name="Créé le", value=member.created_at.strftime("%d/%m/%Y"))
-    embed.add_field(name="Rejoint le", value=member.joined_at.strftime("%d/%m/%Y"))
-    await ctx.send(embed=embed)
-
-@bot.command(name='serverinfo')
-async def serverinfo(ctx):
-    g = ctx.guild
-    embed = discord.Embed(title=f"📊 {g.name}", color=0x5865F2)
-    if g.icon:
-        embed.set_thumbnail(url=g.icon.url)
-    embed.add_field(name="ID", value=g.id)
-    embed.add_field(name="Propriétaire", value=g.owner.mention)
-    embed.add_field(name="Membres", value=g.member_count)
-    embed.add_field(name="Salons", value=len(g.channels))
-    embed.add_field(name="Rôles", value=len(g.roles))
-    await ctx.send(embed=embed)
-
-@bot.command(name='avatar')
-async def avatar(ctx, member: discord.Member = None):
-    if not member:
-        member = ctx.author
-    embed = discord.Embed(title=f"🖼️ {member.name}")
-    embed.set_image(url=member.display_avatar.url)
-    await ctx.send(embed=embed)
-
-# ==========================================
-# EVENTS
-# ==========================================
-@bot.event
-async def on_ready():
-    print(f'✅ Bot connecté: {bot.user}')
-    print(f'📊 {len(bot.guilds)} serveurs')
-    await bot.change_presence(activity=discord.Streaming(name="🔴 Live | !help", url="https://twitch.tv/votre_stream"))
-
-    # RECREER LES VUES DES TICKETS
-    try:
-        tickets = load_json("tickets.json")
-        for ticket_id, data in tickets.items():
-            if data.get('status') == 'open':
-                channel = bot.get_channel(data.get('channel_id'))
-                if channel:
-                    async for msg in channel.history(limit=1):
-                        if msg.author == bot.user:
-                            view = TicketCloseView()
-                            await msg.edit(view=view)
-                            print(f"✅ Vue recréée ticket #{ticket_id}")
-                            break
-        print("✅ Vues recréées !")
-    except Exception as e:
-        print(f"❌ Erreur lors de la recréation des vues: {e}")
-
-@bot.event
-async def on_raw_reaction_add(payload):
-    if payload.user_id == bot.user.id:
-        return
-    guild = bot.get_guild(payload.guild_id)
-    if not guild:
-        return
-    config = load_json("config.json")
-    guild_config = config.get(str(guild.id), {})
-    if str(payload.message_id) != guild_config.get('membre_message_id'):
-        return
-    if str(payload.emoji) != guild_config.get('membre_emoji', '✅'):
-        return
-    member = guild.get_member(payload.user_id)
-    if not member:
-        return
-    role_id = guild_config.get('membre_role_id')
-    if not role_id:
-        return
-    role = guild.get_role(int(role_id))
-    if not role:
-        return
-    try:
-        await member.add_roles(role)
-        print(f"✅ Rôle {role.name} attribué à {member.name}")
-    except Exception as e:
-        print(f"❌ Erreur: {e}")
-
-# ==========================================
-# LANCEMENT
-# ==========================================
-if __name__ == "__main__":
-    TOKEN = os.getenv('DISCORD_TOKEN')
-    if not TOKEN:
-        print("❌ Token manquant !")
-        sys.exit(1)
-
-    for f in ["config.json", "stock.json", "tickets.json", "giveaways.json", "mutes.json"]:
-        if not os.path.exists(f):
-            save_json(f, {})
-
-    print("🚀 Démarrage...")
-    bot.run(TOKEN)
+    embed = discord.Embed(title="📢 Message du propriétaire", description=msg, color=
