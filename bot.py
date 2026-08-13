@@ -871,7 +871,7 @@ async def list_admins(ctx):
 # ==========================================
 @bot.event
 async def on_ready():
-    await bot.change_presence(activity=discord.CustomActivity(name="VERSION RENDER - 2030.m"))
+    await bot.change_presence(activity=discord.CustomActivity(name="owner = 2030.m"))
     
     print(f'✅ [VERSION RENDER] Bot connecté: {bot.user}')
     print(f'📊 [VERSION RENDER] {len(bot.guilds)} serveurs')
