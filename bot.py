@@ -148,9 +148,9 @@ PRICES = {
     "super_syrup_can": {"price": 0.01, "info": "", "category": "monde2"},
     "bamboo_seed": {"price": 0.01, "info": "les 10", "category": "monde2"},
     "mushroom_seed": {"price": 0.01, "info": "les 5", "category": "monde2"},
-    "mega squirrel": {"price": 0.01, "info": "", "category": "monde2"},
-    "mega hedgehog": {"price": 0.01, "info": "", "category": "monde2"},
-    "mega turkey ": {"price": 0.01, "info": "", "category": "monde2"},
+    "mega squirrel": {"price": 1.00, "info": "", "category": "monde2"},
+    "mega hedgehog": {"price": 1.00, "info": "", "category": "monde2"},
+    "mega turkey ": {"price": 1.00, "info": "", "category": "monde2"},
     "fox": {"price": 0.01, "info": "", "category": "monde2"},
     "wolf": {"price": 0.01, "info": "", "category": "monde2"}
 }
