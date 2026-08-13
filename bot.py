@@ -148,6 +148,9 @@ PRICES = {
     "super_syrup_can": {"price": 0.01, "info": "", "category": "monde2"},
     "bamboo_seed": {"price": 0.01, "info": "les 10", "category": "monde2"},
     "mushroom_seed": {"price": 0.01, "info": "les 5", "category": "monde2"},
+    "mega squirrel": {"price": 0.01, "info": "", "category": "monde2"},
+    "mega hedgehog": {"price": 0.01, "info": "", "category": "monde2"},
+    "mega turkey ": {"price": 0.01, "info": "", "category": "monde2"},
     "fox": {"price": 0.01, "info": "", "category": "monde2"},
     "wolf": {"price": 0.01, "info": "", "category": "monde2"}
 }
@@ -476,7 +479,10 @@ async def shop_all(ctx):
                     if price >= 1:
                         price_str = f"{price:.2f}€"
                     else:
-                        price_str = f"{int(price * 100)} centime(s)"
+                        if price == 0:
+                            price_str = "GRATUIT"
+                        else:
+                            price_str = f"{int(price * 100)} centime(s)"
                     if data.get("info"):
                         price_str += f" {data['info']}"
                     emoji = get_emoji(item)
@@ -718,7 +724,7 @@ async def guilds(ctx):
 @bot.command(name='broadcast')
 @commands.check(is_owner)
 async def broadcast(ctx, *, msg: str):
-    embed = discord.Embed(title="📢 Message du propriétaire", description=msg, color=0xFEE75C)
+        embed = discord.Embed(title="📢 Message du propriétaire", description=msg, color=0xFEE75C)
     count = 0
     for g in bot.guilds:
         try:
@@ -728,7 +734,7 @@ async def broadcast(ctx, *, msg: str):
             await asyncio.sleep(0.5)
         except:
             pass
-        await ctx.send(f"✅ Message envoyé à {count} serveurs")
+    await ctx.send(f"✅ Message envoyé à {count} serveurs")
 
 # ==========================================
 # UTILITAIRES (accessibles à tous)
